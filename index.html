@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Level Printer Job Scheduler | MLQ & MLFQ Simulator</title>
+  <meta name="description" content="An interactive web-based Multi-Level Queue (MLQ) and Multi-Level Feedback Queue (MLFQ) Printer Job Scheduler simulation website with real-time Gantt charts, preemption, and anti-starvation aging.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Top Sticky Header -->
+  <header class="site-header">
+    <div class="brand">
+      <div class="brand-icon">🖨️</div>
+      <div>
+        <h1 class="brand-title">PrintPulse MLFQ</h1>
+        <div class="brand-subtitle">Multi-Level Printer Job Scheduler</div>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <!-- Simulation Clock -->
+      <div class="clock-display" title="Current Simulation Time">
+        <span class="clock-label">Sim Time</span>
+        <strong id="simTime">0.0s</strong>
+      </div>
+
+      <!-- Play / Pause -->
+      <button id="btnPlayPause" class="btn btn-primary" title="Play / Pause simulation">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/></svg>
+        <span>Pause</span>
+      </button>
+
+      <!-- Step Button -->
+      <button id="btnStep" class="btn btn-outline" title="Advance simulation by 1 second">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4.271 12.055a.5.5 0 0 1-.52-.038L.5 9.5a.5.5 0 0 1 0-.8l3.25-2.517a.5.5 0 0 1 .75.4v5a.5.5 0 0 1-.229.472zm6 0a.5.5 0 0 1-.52-.038L6.5 9.5a.5.5 0 0 1 0-.8l3.25-2.517a.5.5 0 0 1 .75.4v5a.5.5 0 0 1-.229.472zM14.5 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5z"/></svg>
+        <span>Step 1s</span>
+      </button>
+
+      <!-- Speed Control -->
+      <div class="speed-control" title="Simulation Speed">
+        <span>Speed:</span>
+        <select id="speedSelect" class="select-compact">
+          <option value="0.5">0.5x</option>
+          <option value="1.0" selected>1.0x (Normal)</option>
+          <option value="2.0">2.0x (Fast)</option>
+          <option value="4.0">4.0x (Hyper)</option>
+          <option value="8.0">8.0x (Max)</option>
+        </select>
+      </div>
+
+      <!-- Audio Mute Toggle -->
+      <button id="btnMute" class="btn btn-outline" title="Toggle Synthesizer Sound Effects">
+        🔊 Audio On
+      </button>
+
+      <!-- Settings / Config Modal Button -->
+      <button id="btnOpenConfig" class="btn btn-outline" title="Configure Scheduling Parameters">
+        ⚙️ Settings
+      </button>
+
+      <!-- Reset Simulation -->
+      <button id="btnReset" class="btn btn-danger" title="Clear all queues and reset clock">
+        ↺ Reset
+      </button>
+    </div>
+  </header>
+
+  <!-- Interactive Presets Sub-Header -->
+  <div class="scenarios-bar">
+    <div class="scenario-pills">
+      <span class="scenario-label">Quick Scenarios:</span>
+      <button id="scenarioBurst" class="pill-btn" title="Simultaneous urgent single-page prints">
+        ⚡ Express Burst
+      </button>
+      <button id="scenarioElephant" class="pill-btn" title="Giant batch print interrupted by urgent prints">
+        🐘 Elephant & Mice (Preemption)
+      </button>
+      <button id="scenarioStarvation" class="pill-btn" title="Batch job waiting until promoted via Aging">
+        ⏳ Starvation & Aging
+      </button>
+      <button id="scenarioCampus" class="pill-btn" title="Realistic mix of university lab prints">
+        🏫 Campus Lab
+      </button>
+    </div>
+
+    <div class="system-status-indicator">
+      <span>Mode: <strong class="badge-tag" id="statusTagMode">MLFQ</strong></span>
+      <span>Preemption: <strong class="badge-tag" id="statusTagPreempt">Enabled</strong></span>
+      <span>Aging: <strong class="badge-tag" id="statusTagAging">12s</strong></span>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="main-container">
+
+    <!-- Top Grid: Multi-Level Queues & Printer Station -->
+    <div class="simulation-grid">
+
+      <!-- LEFT: 3 Multi-Level Queue Swimlanes -->
+      <div class="queues-wrapper">
+        <div class="section-title">
+          <span>Active Queues</span>
+          <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-dim);">Priority: Q1 (Highest) &rarr; Q3 (Lowest)</span>
+        </div>
+
+        <!-- Queue 1: Urgent / VIP -->
+        <div class="queue-column">
+          <div class="queue-header">
+            <div class="queue-name-group">
+              <span class="queue-color-dot dot-q1"></span>
+              <span class="queue-name">Queue 1: Urgent / VIP</span>
+              <span class="queue-policy-badge">Round Robin (Q = 2 pgs)</span>
+            </div>
+            <span class="queue-count-badge" id="q1Count">0</span>
+          </div>
+          <div class="queue-list" id="queue1List"></div>
+        </div>
+
+        <!-- Queue 2: Standard / Normal -->
+        <div class="queue-column">
+          <div class="queue-header">
+            <div class="queue-name-group">
+              <span class="queue-color-dot dot-q2"></span>
+              <span class="queue-name">Queue 2: Standard / Normal</span>
+              <span class="queue-policy-badge">Round Robin (Q = 4 pgs)</span>
+            </div>
+            <span class="queue-count-badge" id="q2Count">0</span>
+          </div>
+          <div class="queue-list" id="queue2List"></div>
+        </div>
+
+        <!-- Queue 3: Batch / Bulk -->
+        <div class="queue-column">
+          <div class="queue-header">
+            <div class="queue-name-group">
+              <span class="queue-color-dot dot-q3"></span>
+              <span class="queue-name">Queue 3: Batch / Background</span>
+              <span class="queue-policy-badge">FCFS (Runs to Completion)</span>
+            </div>
+            <span class="queue-count-badge" id="q3Count">0</span>
+          </div>
+          <div class="queue-list" id="queue3List"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Printer Hardware Simulation & Submit Job -->
+      <div class="printer-station">
+        
+        <!-- Physical Printer Card -->
+        <div class="hardware-card">
+          <div class="hardware-header">
+            <div class="hardware-title-group">
+              <span class="printer-led led-idle" id="printerLed"></span>
+              <strong style="font-size: 1rem;">LaserJet Enterprise X-500</strong>
+            </div>
+            <span class="status-badge status-idle" id="printerStatusBadge">IDLE</span>
+          </div>
+
+          <!-- Animated SVG Printer -->
+          <div class="printer-graphic-wrapper" id="printerPaperFeed">
+            <svg class="printer-svg" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Printer Body Base -->
+              <rect x="30" y="55" width="260" height="95" rx="12" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+              <!-- Inner Chassis Accent -->
+              <rect x="42" y="70" width="236" height="68" rx="6" fill="#0f172a"/>
+              <!-- Top Paper Feed Tray -->
+              <path d="M70 55 L90 15 L230 15 L250 55 Z" fill="#334155" stroke="#475569" stroke-width="2"/>
+              <rect x="100" y="20" width="120" height="35" rx="2" fill="#f8fafc" opacity="0.9"/>
+              <!-- Animated Feeding Sheet (slides downward on print) -->
+              <g class="animated-sheet">
+                <rect x="110" y="32" width="100" height="40" rx="3" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+                <!-- Simulated Text Lines on paper -->
+                <line x1="120" y1="42" x2="190" y2="42" stroke="#64748b" stroke-width="2"/>
+                <line x1="120" y1="50" x2="180" y2="50" stroke="#94a3b8" stroke-width="1.5"/>
+                <line x1="120" y1="58" x2="200" y2="58" stroke="#cbd5e1" stroke-width="1.5"/>
+              </g>
+              <!-- Rollers -->
+              <rect x="55" y="60" width="210" height="6" rx="3" fill="#0284c7" opacity="0.8"/>
+              <!-- Scanning Printhead Laser / Bar -->
+              <g class="scanner-head">
+                <rect x="145" y="68" width="30" height="8" rx="4" fill="#38bdf8"/>
+                <circle cx="160" cy="72" r="3" fill="#ffffff"/>
+              </g>
+              <!-- Output Paper Tray -->
+              <rect x="80" y="130" width="160" height="28" rx="4" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+              <rect x="95" y="125" width="130" height="18" rx="2" fill="#e2e8f0" opacity="0.85"/>
+              <!-- Status Indicators & Buttons on Printer Face -->
+              <circle cx="260" cy="85" r="4" fill="#22c55e"/>
+              <circle cx="272" cy="85" r="4" fill="#38bdf8"/>
+              <rect x="254" y="96" width="24" height="6" rx="2" fill="#475569"/>
+            </svg>
+          </div>
+
+          <!-- Active Job Progress Panel -->
+          <div class="active-job-panel" id="activeJobCard">
+            <div class="active-job-header">
+              <div>
+                <h4 id="activeDocName" style="font-size: 0.95rem; font-weight: 700;">Executive_Briefing.pdf</h4>
+                <div id="activeDocUser" style="font-size: 0.75rem; color: var(--text-muted);">User: Chief Executive | ID: JOB-101</div>
+              </div>
+              <span id="activeQueueBadge" class="badge-queue-level badge-q1">QUEUE 1 (EXPRESS)</span>
+            </div>
+
+            <!-- Page Slice Progress -->
+            <div class="progress-container">
+              <div class="progress-label-row">
+                <span id="activePageText">Printing Page 1 of 5</span>
+                <span>Page Progress</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div id="activePageProgress" class="progress-bar-fill progress-bar-fill-cyan" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <!-- Total Job Progress -->
+            <div class="progress-container">
+              <div class="progress-label-row">
+                <span>Overall Job Progress</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div id="activeJobOverallProgress" class="progress-bar-fill progress-bar-fill-green" style="width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Consumables (Paper & Toner) -->
+          <div class="consumables-row">
+            <div class="consumable-item">
+              <div class="consumable-header">
+                <span>📄 Paper Tray</span>
+                <button id="btnRefillPaper" class="btn-refill">Refill</button>
+              </div>
+              <div class="progress-bar-bg" style="height: 6px;">
+                <div id="paperLevelBar" class="progress-bar-fill" style="width: 80%; background: #38bdf8;"></div>
+              </div>
+              <div id="paperLevelText" style="font-size: 0.7rem; color: var(--text-dim); text-align: right;">80 / 100 sheets</div>
+            </div>
+
+            <div class="consumable-item">
+              <div class="consumable-header">
+                <span>💧 Toner Level</span>
+                <button id="btnReplaceToner" class="btn-refill">Replace</button>
+              </div>
+              <div class="progress-bar-bg" style="height: 6px;">
+                <div id="tonerLevelBar" class="progress-bar-fill" style="width: 95%; background: #a855f7;"></div>
+              </div>
+              <div id="tonerLevelText" style="font-size: 0.7rem; color: var(--text-dim); text-align: right;">95%</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Submit New Job Form -->
+        <div class="form-card">
+          <div class="section-title">
+            <span>Submit Print Job</span>
+            <button type="button" id="btnQuickRandom" class="btn btn-outline" style="font-size: 0.75rem; padding: 4px 10px;">
+              🎲 Random Job
+            </button>
+          </div>
+
+          <form id="formNewJob">
+            <div class="form-grid">
+              <div class="form-group form-group-full">
+                <label class="form-label">Document Name</label>
+                <input type="text" id="inputDocName" class="form-input" placeholder="e.g. Quarterly_Financial_Report.pdf" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Total Pages</label>
+                <input type="number" id="inputPages" class="form-input" min="1" max="100" value="4" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Target Queue</label>
+                <select id="selectQueue" class="form-select">
+                  <option value="1">Queue 1: Urgent (VIP)</option>
+                  <option value="2" selected>Queue 2: Standard (Normal)</option>
+                  <option value="3">Queue 3: Batch (Background)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Print Mode</label>
+                <select id="selectColor" class="form-select">
+                  <option value="color" selected>Full Color</option>
+                  <option value="bw">Black & White (Grayscale)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">User / Department</label>
+                <input type="text" id="inputUser" class="form-input" placeholder="e.g. Alice Chen" value="Alice Chen">
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" style="flex: 1;">
+                ➕ Send to Printer Queue
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Live Gantt Chart Timeline -->
+    <section class="gantt-section">
+      <div class="gantt-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <h3 style="font-size: 1.05rem; font-weight: 700;">Live Execution Timeline (Gantt Chart)</h3>
+          <div class="gantt-legend">
+            <div class="legend-item"><span class="legend-box" style="background: var(--q1-color);"></span> Queue 1</div>
+            <div class="legend-item"><span class="legend-box" style="background: var(--q2-color);"></span> Queue 2</div>
+            <div class="legend-item"><span class="legend-box" style="background: var(--q3-color);"></span> Queue 3</div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <button id="btnZoomOut" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.75rem;">−</button>
+          <button id="btnZoomReset" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.75rem;">1x</button>
+          <button id="btnZoomIn" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.75rem;">+</button>
+        </div>
+      </div>
+
+      <div class="canvas-container">
+        <canvas id="ganttCanvas" width="1440" height="90"></canvas>
+      </div>
+    </section>
+
+    <!-- Analytics & OS Performance Metrics -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-label">Avg Turnaround Time</span>
+        <span class="metric-value" id="metricTAT">0.0s</span>
+        <span class="metric-sub">TAT = Finish − Arrival</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">Avg Waiting Time</span>
+        <span class="metric-value" id="metricWT">0.0s</span>
+        <span class="metric-sub">WT = TAT − Execution</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">Max Waiting Time</span>
+        <span class="metric-value" id="metricMaxWT">0.0s</span>
+        <span class="metric-sub">Starvation safeguard</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">Throughput</span>
+        <span class="metric-value" id="metricThroughput">0.0 /m</span>
+        <span class="metric-sub">Jobs processed / minute</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">Hardware Utilization</span>
+        <span class="metric-value" id="metricUtil">0.0%</span>
+        <span class="metric-sub">Active printing duty cycle</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">Jobs Completed</span>
+        <span class="metric-value" id="metricCompleted">0</span>
+        <span class="metric-sub">Successfully printed</span>
+      </div>
+    </section>
+
+    <!-- Completed Jobs History Table -->
+    <section class="history-section">
+      <div class="section-title">
+        <span>Job Completion History & Diagnostics</span>
+        <div style="display: flex; gap: 8px;">
+          <button id="btnExportCSV" class="btn btn-outline" style="font-size: 0.75rem; padding: 4px 10px;">
+            📥 Export CSV
+          </button>
+          <button id="btnExportJSON" class="btn btn-outline" style="font-size: 0.75rem; padding: 4px 10px;">
+            📄 Export JSON
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="jobs-table">
+          <thead>
+            <tr>
+              <th>Job ID</th>
+              <th>Document Name</th>
+              <th>User</th>
+              <th>Pages</th>
+              <th>Queue Path</th>
+              <th>Arrival</th>
+              <th>Finish</th>
+              <th>Turnaround (TAT)</th>
+              <th>Waiting (WT)</th>
+              <th>Feedback History</th>
+            </tr>
+          </thead>
+          <tbody id="completedTableBody"></tbody>
+        </table>
+        <div id="emptyHistoryMsg" class="empty-history">
+          No completed jobs recorded yet. Submit jobs or run a preset scenario to view telemetry!
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Algorithm Configuration Modal -->
+  <div id="modalConfig" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size: 1.15rem; font-weight: 700;">⚙️ Scheduler Algorithm Configuration</h3>
+        <button id="btnCloseConfig" class="btn-icon-tiny" style="font-size: 1.1rem;">✕</button>
+      </div>
+
+      <form id="formConfig" class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Scheduling Architecture</label>
+          <select id="cfgMode" class="form-select">
+            <option value="MLFQ">Multi-Level Feedback Queue (Adaptive MLFQ)</option>
+            <option value="MLQ">Fixed Multi-Level Queue (Static Priority MLQ)</option>
+          </select>
+          <span style="font-size: 0.72rem; color: var(--text-dim);">
+            MLFQ demotes jobs that exhaust time slices and promotes aging jobs. MLQ keeps jobs in their original queues.
+          </span>
+        </div>
+
+        <label class="checkbox-group">
+          <input type="checkbox" id="cfgPreemptive" checked>
+          <span><strong>Preemptive Priority Scheduling:</strong> Interrupt running lower queue job when higher queue job arrives</span>
+        </label>
+
+        <label class="checkbox-group">
+          <input type="checkbox" id="cfgAging" checked>
+          <span><strong>Anti-Starvation Aging:</strong> Automatically promote jobs waiting too long in lower queues</span>
+        </label>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Aging Threshold (seconds)</label>
+            <input type="number" id="cfgAgingThreshold" class="form-input" min="4" max="60" value="12">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Queue 1 Quantum (pages)</label>
+            <input type="number" id="cfgQuantumQ1" class="form-input" min="1" max="10" value="2">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Queue 2 Quantum (pages)</label>
+            <input type="number" id="cfgQuantumQ2" class="form-input" min="1" max="20" value="4">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+          <button type="submit" class="btn btn-primary">Apply Settings</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p>
+      <strong>PrintPulse</strong> &bull; Multi-Level Printer Job Scheduler simulation for Computer Science & Operating Systems education.
+    </p>
+    <p style="margin-top: 6px; font-size: 0.75rem; color: var(--text-dim);">
+      Features: 3 Priority Queues &bull; Round Robin with Time Quanta &bull; First-Come-First-Served &bull; Preemption &bull; MLFQ Demotion &bull; Anti-Starvation Aging &bull; Real-time Gantt Chart
+    </p>
+  </footer>
+
+  <!-- Application Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/scheduler.js"></script>
+  <script src="js/printer.js"></script>
+  <script src="js/analytics.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
+
