@@ -31,11 +31,11 @@ Welcome to the **Multi-Level Printer Job Scheduler (PrintPulse MLFQ)** user manu
 ## 🎮 Navigation & Controls
 
 ### 1. Simulation Playback Controls
-- **Play / Pause**: Toggles the real-time simulation clock on and off.
-- **Step 1s**: Advances the simulation clock by exactly 1.0 second. Ideal for studying context switches and queue demotions step by step.
+- **Play / Pause** (`Spacebar`): Toggles the real-time simulation clock on and off.
+- **Step 1s** (`S` key): Advances the simulation clock by exactly 1.0 second. Ideal for studying context switches and queue demotions step by step.
 - **Speed Selector**: Run the simulation at $0.5\times$, $1.0\times$ (normal), $2.0\times$ (fast), $4.0\times$ (hyper), or $8.0\times$ (maximum speed).
 - **Audio On / Mute**: Toggles procedural sound effects generated via Web Audio API (stepper motor scanning, paper feeding roller sounds, completion chime).
-- **Reset**: Empties all active queues, clears completed history, and resets the simulation clock to zero.
+- **Reset** (`R` key): Empties all active queues, clears completed history, and resets the simulation clock to zero.
 
 ### 2. Multi-Level Queue Swimlanes
 Each job card in the queue displays:

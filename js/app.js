@@ -449,6 +449,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Keyboard Shortcuts (Space: Play/Pause, S: Step, R: Reset)
+  window.addEventListener('keydown', (e) => {
+    // Ignore keyboard shortcuts if user is typing in a form input or modal
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA')) {
+      return;
+    }
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      togglePlayPause();
+    } else if (e.key === 's' || e.key === 'S') {
+      if (elBtnStep) elBtnStep.click();
+    } else if (e.key === 'r' || e.key === 'R') {
+      if (elBtnReset) elBtnReset.click();
+    }
+  });
+
   // Audio Mute Toggle
   if (elBtnMute) {
     elBtnMute.addEventListener('click', () => {
